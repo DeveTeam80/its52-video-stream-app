@@ -76,8 +76,7 @@ export default function AdminPage() {
           bodyRef.current.style.display = "block";
         }
 
-        await fetchUsers();
-        await fetchCurrentVideo();
+        await Promise.all([fetchUsers(), fetchCurrentVideo()]);
       } catch (err) {
         console.error(err);
         router.push("/admin/login");
@@ -550,6 +549,7 @@ export default function AdminPage() {
                 className="btn-login btn"
                 type="button"
                 value="New Link"
+                style={{ marginRight: "0.5rem" }}
                 onClick={addLink}
               />
               {currentVideoUrl && (

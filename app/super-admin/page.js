@@ -81,8 +81,7 @@ export default function SuperAdminPage() {
           bodyRef.current.style.display = "block";
         }
 
-        await fetchAdmins();
-        await fetchSuperAdmins();
+        await Promise.all([fetchAdmins(), fetchSuperAdmins()]);
       } catch (err) {
         console.error(err);
         router.push("/admin/login");
@@ -568,7 +567,7 @@ export default function SuperAdminPage() {
               <input
                 className="btn-login btn"
                 type="button"
-                value="Change My Password"
+                value="Change Password"
                 onClick={changeOwnPassword}
               />
             </div>
