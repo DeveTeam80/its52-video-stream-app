@@ -539,7 +539,7 @@ export default function SuperAdminPage() {
           </div>
         </div>
 
-        {/* Row 2: Change My Password + Add Super Admin */}
+        {/* Row 2: Change My Password */}
         <div className="content admin-actions-row">
           <div className="admin-action-col">
             <div className="nav">
@@ -573,7 +573,10 @@ export default function SuperAdminPage() {
               />
             </div>
           </div>
+        </div>
 
+        {/* Row 3: Add Super Admin */}
+        <div className="content admin-actions-row">
           <div className="admin-action-col">
             <div className="nav">
               <div className="input-group">

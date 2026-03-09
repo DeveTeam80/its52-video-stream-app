@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(tasklist)",
+      "Bash(wmic process where \"name=''node.exe''\" get ProcessId,CommandLine)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, Path, CommandLine | Format-List\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 23204)"
+    ]
+  }
+}
