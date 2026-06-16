@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function PUT(request) {
@@ -14,8 +11,6 @@ export async function PUT(request) {
         { status: 401 }
       );
     }
-
-    await dbConnect();
 
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
@@ -44,7 +39,7 @@ export async function PUT(request) {
     }
 
     // Block editing admin or super admin ITS from the user management page
-    const isTargetAdmin = await Admin.findOne({ identityNumber: oldIdentityNumber });
+    const isTargetAdmin = await prisma.admin.findUnique({ where: { identityNumber: oldIdentityNumber } });
     if (isTargetAdmin) {
       return NextResponse.json(
         { message: "This ITS belongs to an admin. Use the super admin panel to manage admins." },
@@ -52,7 +47,7 @@ export async function PUT(request) {
       );
     }
 
-    const isTargetSuperAdmin = await SuperAdmin.findOne({ identityNumber: oldIdentityNumber });
+    const isTargetSuperAdmin = await prisma.superAdmin.findUnique({ where: { identityNumber: oldIdentityNumber } });
     if (isTargetSuperAdmin) {
       return NextResponse.json(
         { message: "This ITS belongs to a super admin and cannot be edited here." },
@@ -60,7 +55,7 @@ export async function PUT(request) {
       );
     }
 
-    const targetUser = await User.findOne({ identityNumber: oldIdentityNumber });
+    const targetUser = await prisma.user.findUnique({ where: { identityNumber: oldIdentityNumber } });
 
     if (!targetUser) {
       return NextResponse.json(
@@ -69,7 +64,7 @@ export async function PUT(request) {
       );
     }
 
-    const duplicate = await User.findOne({ identityNumber: newIdentityNumber });
+    const duplicate = await prisma.user.findUnique({ where: { identityNumber: newIdentityNumber } });
 
     if (duplicate) {
       return NextResponse.json(
@@ -78,10 +73,10 @@ export async function PUT(request) {
       );
     }
 
-    await User.findOneAndUpdate(
-      { identityNumber: oldIdentityNumber },
-      { identityNumber: newIdentityNumber, activeStatus: false, token: null }
-    );
+    await prisma.user.update({
+      where: { identityNumber: oldIdentityNumber },
+      data: { identityNumber: newIdentityNumber, activeStatus: false, token: null },
+    });
 
     return NextResponse.json({
       message: "User updated successfully.",

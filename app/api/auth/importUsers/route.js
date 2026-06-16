@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -12,8 +11,6 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-
-    await dbConnect();
 
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
@@ -32,6 +29,10 @@ export async function POST(request) {
       );
     }
 
+    // Batch-fetch existing user ITS numbers upfront for O(1) lookups
+    const existingUsers = await prisma.user.findMany({ select: { identityNumber: true } });
+    const existingIts = new Set(existingUsers.map((u) => u.identityNumber));
+
     let created = 0;
     let skipped = 0;
 
@@ -39,14 +40,22 @@ export async function POST(request) {
       const trimmed = String(its).trim();
       if (!trimmed) continue;
 
-      const existing = await User.findOne({ identityNumber: trimmed });
-      if (existing) {
+      if (existingIts.has(trimmed)) {
         skipped++;
         continue;
       }
 
-      await User.create({ identityNumber: trimmed });
-      created++;
+      try {
+        await prisma.user.create({ data: { identityNumber: trimmed } });
+        existingIts.add(trimmed);
+        created++;
+      } catch (createError) {
+        if (createError.code === "P2002") {
+          skipped++;
+        } else {
+          throw createError;
+        }
+      }
     }
 
     return NextResponse.json({

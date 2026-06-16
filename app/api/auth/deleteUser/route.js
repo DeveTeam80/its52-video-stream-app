@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function DELETE(request) {
@@ -12,8 +11,6 @@ export async function DELETE(request) {
         { status: 401 }
       );
     }
-
-    await dbConnect();
 
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
@@ -32,7 +29,7 @@ export async function DELETE(request) {
       );
     }
 
-    const targetUser = await User.findOne({ identityNumber });
+    const targetUser = await prisma.user.findUnique({ where: { identityNumber } });
 
     if (!targetUser) {
       return NextResponse.json(
@@ -41,7 +38,7 @@ export async function DELETE(request) {
       );
     }
 
-    await User.deleteOne({ identityNumber });
+    await prisma.user.delete({ where: { identityNumber } });
 
     return NextResponse.json({
       message: "User deleted successfully.",

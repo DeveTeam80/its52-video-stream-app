@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Youtube from "@/lib/models/youtube";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,8 +12,6 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
       return NextResponse.json(
@@ -23,7 +20,7 @@ export async function GET(request) {
       );
     }
 
-    const youtubeDoc = await Youtube.findOne({});
+    const youtubeDoc = await prisma.youtube.findUnique({ where: { id: 1 } });
     const videoId = youtubeDoc?.videoId || null;
 
     return NextResponse.json({

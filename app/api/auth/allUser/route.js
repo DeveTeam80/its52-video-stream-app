@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,8 +12,6 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
       return NextResponse.json(
@@ -23,11 +20,7 @@ export async function GET(request) {
       );
     }
 
-    const allUsers = await User.find({});
-
-    if (!allUsers) {
-      return NextResponse.json({ message: "No Users In DB" }, { status: 404 });
-    }
+    const allUsers = await prisma.user.findMany();
 
     return NextResponse.json({ message: "All Users", allUsers });
   } catch (error) {

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { identityNumberConstant } from "@/lib/constants";
 
@@ -14,8 +13,6 @@ export async function POST(request) {
       );
     }
 
-    await dbConnect();
-
     const { identityNumber } = user;
 
     if (!identityNumber) {
@@ -25,7 +22,7 @@ export async function POST(request) {
       );
     }
 
-    const existingUser = await User.findOne({ identityNumber });
+    const existingUser = await prisma.user.findUnique({ where: { identityNumber } });
 
     if (!existingUser) {
       const response = NextResponse.json({
@@ -45,10 +42,10 @@ export async function POST(request) {
       return response;
     }
 
-    await User.findOneAndUpdate(
-      { identityNumber },
-      { activeStatus: false, token: null }
-    );
+    await prisma.user.update({
+      where: { identityNumber },
+      data: { activeStatus: false, token: null },
+    });
 
     const response = NextResponse.json({
       message: "Logged Out Successfully.",

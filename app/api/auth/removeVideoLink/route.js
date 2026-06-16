@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Youtube from "@/lib/models/youtube";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function DELETE(request) {
@@ -14,8 +12,6 @@ export async function DELETE(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
       return NextResponse.json(
@@ -24,14 +20,15 @@ export async function DELETE(request) {
       );
     }
 
-    await Youtube.deleteMany({});
+    await prisma.youtube.deleteMany({});
 
     // Auto-trigger refresh for all connected users
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { triggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { triggeredAt: now },
+      create: { id: 1, triggeredAt: now },
+    });
 
     return NextResponse.json({
       success: true,

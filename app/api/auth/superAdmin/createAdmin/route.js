@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 import { MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/constants";
 
@@ -14,8 +12,6 @@ export async function POST(request) {
         { status: 403 }
       );
     }
-
-    await dbConnect();
 
     let { identityNumber, password } = await request.json();
     identityNumber = String(identityNumber).trim();
@@ -41,7 +37,7 @@ export async function POST(request) {
       );
     }
 
-    const isSuperAdminIts = await SuperAdmin.findOne({ identityNumber });
+    const isSuperAdminIts = await prisma.superAdmin.findUnique({ where: { identityNumber } });
     if (isSuperAdminIts) {
       return NextResponse.json(
         { message: "This ITS belongs to a super admin and cannot be added as a regular admin." },
@@ -49,7 +45,7 @@ export async function POST(request) {
       );
     }
 
-    const existing = await Admin.findOne({ identityNumber });
+    const existing = await prisma.admin.findUnique({ where: { identityNumber } });
     if (existing) {
       return NextResponse.json(
         { message: "Admin with this ITS already exists." },
@@ -58,9 +54,9 @@ export async function POST(request) {
     }
 
     try {
-      await Admin.create({ identityNumber, password });
+      await prisma.admin.create({ data: { identityNumber, password } });
     } catch (createError) {
-      if (createError.code === 11000) {
+      if (createError.code === "P2002") {
         return NextResponse.json(
           { message: "Admin with this ITS already exists." },
           { status: 400 }

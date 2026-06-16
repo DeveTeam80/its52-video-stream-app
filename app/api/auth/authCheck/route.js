@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
+import prisma from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
 export async function GET(request) {
@@ -17,8 +16,6 @@ export async function GET(request) {
       return response;
     }
 
-    await dbConnect();
-
     const { identityNumber, adminAuth, superAdmin } = user;
 
     // Super admin check (JWT claims set during DB-verified login)
@@ -31,7 +28,7 @@ export async function GET(request) {
       });
     }
 
-    const adminUser = await Admin.findOne({ identityNumber });
+    const adminUser = await prisma.admin.findUnique({ where: { identityNumber } });
     if (adminUser && adminAuth) {
       return NextResponse.json({
         message: "User Is Authorized",

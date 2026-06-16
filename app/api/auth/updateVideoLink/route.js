@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Youtube from "@/lib/models/youtube";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -13,8 +11,6 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-
-    await dbConnect();
 
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
@@ -46,18 +42,19 @@ export async function POST(request) {
       // Not a URL — treat as raw video ID
     }
 
-    await Youtube.findOneAndUpdate(
-      {},
-      { videoId },
-      { upsert: true, new: true }
-    );
+    await prisma.youtube.upsert({
+      where: { id: 1 },
+      update: { videoId },
+      create: { id: 1, videoId },
+    });
 
     // Auto-trigger refresh for all connected users
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { triggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { triggeredAt: now },
+      create: { id: 1, triggeredAt: now },
+    });
 
     return NextResponse.json({ message: "Link Added", linkAdded: true });
   } catch (error) {

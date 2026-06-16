@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
-import Admin from "@/lib/models/admin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function GET(request) {
@@ -15,8 +12,6 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
       return NextResponse.json(
@@ -26,23 +21,24 @@ export async function GET(request) {
     }
 
     // Exclude the caller so the admin doesn't log themselves out
-    await User.updateMany(
-      { identityNumber: { $ne: user.identityNumber } },
-      { activeStatus: false, token: null, loggedInToday: false }
-    );
+    await prisma.user.updateMany({
+      where: { identityNumber: { not: user.identityNumber } },
+      data: { activeStatus: false, token: null, loggedInToday: false },
+    });
 
     // Also clear Admin collection tokens for consistency (exclude caller)
-    await Admin.updateMany(
-      { identityNumber: { $ne: user.identityNumber } },
-      { activeStatus: false, token: null }
-    );
+    await prisma.admin.updateMany({
+      where: { identityNumber: { not: user.identityNumber } },
+      data: { activeStatus: false, token: null },
+    });
 
     // Auto-trigger refresh so users get kicked to login page
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { triggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { triggeredAt: now },
+      create: { id: 1, triggeredAt: now },
+    });
 
     return NextResponse.json({
       message: "All Users Logged Out Successfully.",

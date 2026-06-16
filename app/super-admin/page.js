@@ -613,7 +613,7 @@ export default function SuperAdminPage() {
                 <span className="current-video-label">Super Admins:</span>
                 {superAdmins.map((sa) => (
                   <span
-                    key={sa._id}
+                    key={sa.identityNumber}
                     className="status-badge status-active"
                     style={{ marginRight: "0.3rem" }}
                   >
@@ -732,7 +732,7 @@ export default function SuperAdminPage() {
               </thead>
               <tbody>
                 {filteredAdmins.map((admin, index) => (
-                  <tr key={admin._id} className={admin.activeStatus ? "row-active" : "row-inactive"}>
+                  <tr key={admin.identityNumber} className={admin.activeStatus ? "row-active" : "row-inactive"}>
                     <td>{index + 1}</td>
                     <td>
                       {editingAdmin === admin.identityNumber ? (

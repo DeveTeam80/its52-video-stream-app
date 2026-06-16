@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,9 +12,7 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
-    const signal = await RefreshSignal.findOne({});
+    const signal = await prisma.refreshSignal.findUnique({ where: { id: 1 } });
     const triggeredAt = signal?.triggeredAt?.toISOString() || null;
 
     return NextResponse.json({ triggeredAt });

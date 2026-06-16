@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -13,8 +12,6 @@ export async function POST(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
       return NextResponse.json(
@@ -23,11 +20,12 @@ export async function POST(request) {
       );
     }
 
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { triggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { triggeredAt: now },
+      create: { id: 1, triggeredAt: now },
+    });
 
     return NextResponse.json({
       message: "Refresh signal sent to all users.",

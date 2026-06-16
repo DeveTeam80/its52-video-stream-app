@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import SuperAdmin from "@/lib/models/superAdmin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,12 +12,10 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
-    const superAdmins = await SuperAdmin.find(
-      {},
-      { identityNumber: 1, createdAt: 1 }
-    ).sort({ createdAt: 1 });
+    const superAdmins = await prisma.superAdmin.findMany({
+      select: { identityNumber: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
 
     return NextResponse.json({
       superAdmins,

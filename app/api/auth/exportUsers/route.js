@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,8 +12,6 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
       return NextResponse.json(
@@ -23,7 +20,7 @@ export async function GET(request) {
       );
     }
 
-    const users = await User.find({}).sort({ createdAt: -1 });
+    const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
 
     // Build CSV
     const header = "Sr No,ITS Number,Status,Logged In Today";

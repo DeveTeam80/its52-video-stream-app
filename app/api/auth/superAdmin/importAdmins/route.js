@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -14,8 +12,6 @@ export async function POST(request) {
       );
     }
 
-    await dbConnect();
-
     const { admins } = await request.json();
 
     if (!admins || !Array.isArray(admins) || admins.length === 0) {
@@ -26,10 +22,10 @@ export async function POST(request) {
     }
 
     // Batch-fetch all existing admin and super admin ITS numbers upfront
-    const existingAdmins = await Admin.find({}, { identityNumber: 1 });
+    const existingAdmins = await prisma.admin.findMany({ select: { identityNumber: true } });
     const existingAdminIts = new Set(existingAdmins.map((a) => a.identityNumber));
 
-    const superAdmins = await SuperAdmin.find({}, { identityNumber: 1 });
+    const superAdmins = await prisma.superAdmin.findMany({ select: { identityNumber: true } });
     const superAdminIts = new Set(superAdmins.map((sa) => sa.identityNumber));
 
     let created = 0;
@@ -58,11 +54,11 @@ export async function POST(request) {
       }
 
       try {
-        await Admin.create({ identityNumber: its, password });
+        await prisma.admin.create({ data: { identityNumber: its, password } });
         existingAdminIts.add(its);
         created++;
       } catch (createError) {
-        if (createError.code === 11000) {
+        if (createError.code === "P2002") {
           skipped++;
         } else {
           throw createError;

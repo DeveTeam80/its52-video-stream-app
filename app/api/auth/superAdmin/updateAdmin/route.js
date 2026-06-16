@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function PUT(request) {
@@ -14,8 +11,6 @@ export async function PUT(request) {
         { status: 403 }
       );
     }
-
-    await dbConnect();
 
     const { oldIdentityNumber, newIdentityNumber } = await request.json();
 
@@ -33,7 +28,7 @@ export async function PUT(request) {
       );
     }
 
-    const admin = await Admin.findOne({ identityNumber: oldIdentityNumber });
+    const admin = await prisma.admin.findUnique({ where: { identityNumber: oldIdentityNumber } });
     if (!admin) {
       return NextResponse.json(
         { message: "Admin not found." },
@@ -41,7 +36,7 @@ export async function PUT(request) {
       );
     }
 
-    const isSuperAdminIts = await SuperAdmin.findOne({ identityNumber: newIdentityNumber });
+    const isSuperAdminIts = await prisma.superAdmin.findUnique({ where: { identityNumber: newIdentityNumber } });
     if (isSuperAdminIts) {
       return NextResponse.json(
         { message: "This ITS belongs to a super admin and cannot be used for a regular admin." },
@@ -49,7 +44,7 @@ export async function PUT(request) {
       );
     }
 
-    const duplicate = await Admin.findOne({ identityNumber: newIdentityNumber });
+    const duplicate = await prisma.admin.findUnique({ where: { identityNumber: newIdentityNumber } });
     if (duplicate) {
       return NextResponse.json(
         { message: "An admin with this ITS already exists." },
@@ -57,17 +52,18 @@ export async function PUT(request) {
       );
     }
 
-    await Admin.findOneAndUpdate(
-      { identityNumber: oldIdentityNumber },
-      { identityNumber: newIdentityNumber, activeStatus: false, token: null }
-    );
+    await prisma.admin.update({
+      where: { identityNumber: oldIdentityNumber },
+      data: { identityNumber: newIdentityNumber, activeStatus: false, token: null },
+    });
 
     // Trigger admin refresh
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { adminTriggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { adminTriggeredAt: now },
+      create: { id: 1, adminTriggeredAt: now },
+    });
 
     return NextResponse.json({
       message: "Admin updated successfully.",

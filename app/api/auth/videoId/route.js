@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Youtube from "@/lib/models/youtube";
+import prisma from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,9 +12,7 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
-    const youtubeDoc = await Youtube.findOne({});
+    const youtubeDoc = await prisma.youtube.findUnique({ where: { id: 1 } });
     const videoId = youtubeDoc?.videoId || null;
 
     return NextResponse.json({ videoId });

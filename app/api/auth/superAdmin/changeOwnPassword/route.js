@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import SuperAdmin from "@/lib/models/superAdmin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 import { MAX_PASSWORD_LENGTH } from "@/lib/constants";
 
@@ -13,8 +12,6 @@ export async function PUT(request) {
         { status: 403 }
       );
     }
-
-    await dbConnect();
 
     const { currentPassword, newPassword } = await request.json();
 
@@ -32,8 +29,8 @@ export async function PUT(request) {
       );
     }
 
-    const superAdmin = await SuperAdmin.findOne({
-      identityNumber: user.identityNumber,
+    const superAdmin = await prisma.superAdmin.findUnique({
+      where: { identityNumber: user.identityNumber },
     });
 
     if (!superAdmin) {
@@ -50,8 +47,10 @@ export async function PUT(request) {
       );
     }
 
-    superAdmin.password = newPassword;
-    await superAdmin.save();
+    await prisma.superAdmin.update({
+      where: { identityNumber: user.identityNumber },
+      data: { password: newPassword },
+    });
 
     return NextResponse.json({
       message: "Password changed successfully.",

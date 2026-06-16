@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
-import Admin from "@/lib/models/admin";
-import LoginAttempt from "@/lib/models/loginAttempt";
+import prisma from "@/lib/prisma";
 import { createJWT } from "@/lib/utils";
 import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH } from "@/lib/constants";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
   try {
-    await LoginAttempt.create({ identityNumber, ipAddress, success, reason });
+    await prisma.loginAttempt.create({ data: { identityNumber, ipAddress, success, reason } });
   } catch (err) {
     console.error("Failed to log login attempt:", err.message);
   }
@@ -17,8 +14,6 @@ async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
 
 export async function POST(request) {
   try {
-    await dbConnect();
-
     const ipAddress =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
@@ -32,14 +27,16 @@ export async function POST(request) {
     }
 
     let { identityNumber } = await request.json();
-    identityNumber = String(identityNumber).trim();
 
-    if (!identityNumber) {
+    // Validate presence BEFORE coercion — String(undefined) === "undefined" would
+    // otherwise slip past this guard and be treated as a real identity number.
+    if (identityNumber === undefined || identityNumber === null || String(identityNumber).trim() === "") {
       return NextResponse.json(
         { message: identityNumberConstant + " Is Mandatory." },
         { status: 400 }
       );
     }
+    identityNumber = String(identityNumber).trim();
 
     if (String(identityNumber).length > MAX_IDENTITY_NUMBER_LENGTH) {
       return NextResponse.json(
@@ -48,25 +45,17 @@ export async function POST(request) {
       );
     }
 
-    const existingUser = await User.findOne({ identityNumber });
-    const adminUser = await Admin.findOne({ identityNumber });
+    const existingUser = await prisma.user.findUnique({ where: { identityNumber } });
+    const adminUser = await prisma.admin.findUnique({ where: { identityNumber } });
 
     if (adminUser) {
       const adminToken = createJWT(identityNumber);
 
-      if (existingUser) {
-        await User.findOneAndUpdate(
-          { identityNumber },
-          { activeStatus: true, token: adminToken, loggedInToday: true }
-        );
-      } else {
-        await User.create({
-          identityNumber,
-          activeStatus: true,
-          token: adminToken,
-          loggedInToday: true,
-        });
-      }
+      await prisma.user.upsert({
+        where: { identityNumber },
+        update: { activeStatus: true, token: adminToken, loggedInToday: true },
+        create: { identityNumber, activeStatus: true, token: adminToken, loggedInToday: true },
+      });
 
       await logLoginAttempt(identityNumber, ipAddress, true, "Admin login");
 
@@ -113,10 +102,10 @@ export async function POST(request) {
 
     const newToken = createJWT(identityNumber);
 
-    await User.findOneAndUpdate(
-      { identityNumber },
-      { activeStatus: true, token: newToken, loggedInToday: true }
-    );
+    await prisma.user.update({
+      where: { identityNumber },
+      data: { activeStatus: true, token: newToken, loggedInToday: true },
+    });
 
     await logLoginAttempt(identityNumber, ipAddress, true, "Login successful");
 

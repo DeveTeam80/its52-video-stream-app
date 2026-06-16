@@ -1,0 +1,86 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (PgBouncer) — used at runtime
+  directUrl = env("DIRECT_URL") // direct endpoint — used by `prisma migrate`
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  identityNumber String   @unique @map("identity_number")
+  activeStatus   Boolean  @default(false) @map("active_status")
+  loggedInToday  Boolean  @default(false) @map("logged_in_today")
+  token          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Admin {
+  id             Int      @id @default(autoincrement())
+  identityNumber String   @unique @map("identity_number")
+  activeStatus   Boolean  @default(false) @map("active_status")
+  loggedInToday  Boolean  @default(false) @map("logged_in_today")
+  token          String?
+  password       String? // plaintext — preserved as-is (hashing deferred)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+model SuperAdmin {
+  id             Int      @id @default(autoincrement())
+  identityNumber String   @unique @map("identity_number")
+  password       String // plaintext — preserved as-is (hashing deferred)
+  createdBy      String?  @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("super_admins")
+}
+
+model LoginAttempt {
+  id             Int      @id @default(autoincrement())
+  identityNumber String   @map("identity_number")
+  ipAddress      String   @map("ip_address")
+  success        Boolean
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([identityNumber, createdAt])
+  @@map("login_attempts")
+}
+
+model RateLimitEntry {
+  id        Int      @id @default(autoincrement())
+  key       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([key, createdAt])
+  @@map("rate_limit_entries")
+}
+
+// Singleton config tables — always one row, addressed by id = 1.
+model Youtube {
+  id        Int      @id @default(1)
+  videoId   String   @map("video_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("youtube")
+}
+
+model RefreshSignal {
+  id               Int       @id @default(1)
+  triggeredAt      DateTime? @map("triggered_at")
+  adminTriggeredAt DateTime? @map("admin_triggered_at")
+
+  @@map("refresh_signal")
+}

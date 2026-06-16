@@ -90,13 +90,6 @@ export default function HomeClient() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (videoId && playerRef.current) {
-      playerRef.current.setAttribute("data-youtube-id", videoId);
-      initPlayer();
-    }
-  }, [videoId, coreLoaded]);
-
   function initPlayer() {
     if (playerInitialized.current) return;
     if (!videoId) return;
@@ -127,6 +120,13 @@ export default function HomeClient() {
       onReady: function () {},
     });
   }
+
+  useEffect(() => {
+    if (videoId && playerRef.current) {
+      playerRef.current.setAttribute("data-youtube-id", videoId);
+      initPlayer();
+    }
+  }, [videoId, coreLoaded]);
 
   async function logout() {
     const token = localStorage.getItem("token");

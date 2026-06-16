@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function DELETE(request) {
@@ -15,28 +12,27 @@ export async function DELETE(request) {
       );
     }
 
-    await dbConnect();
-
     // Exclude ALL super admin ITS numbers from deletion
-    const superAdmins = await SuperAdmin.find({}, { identityNumber: 1 });
+    const superAdmins = await prisma.superAdmin.findMany({ select: { identityNumber: true } });
     const superAdminIts = superAdmins.map((sa) => sa.identityNumber);
 
-    const filter = superAdminIts.length > 0
-      ? { identityNumber: { $nin: superAdminIts } }
+    const where = superAdminIts.length > 0
+      ? { identityNumber: { notIn: superAdminIts } }
       : {};
-    const result = await Admin.deleteMany(filter);
+    const result = await prisma.admin.deleteMany({ where });
 
     // Trigger admin refresh
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { adminTriggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { adminTriggeredAt: now },
+      create: { id: 1, adminTriggeredAt: now },
+    });
 
     return NextResponse.json({
-      message: `${result.deletedCount} admins deleted successfully.`,
+      message: `${result.count} admins deleted successfully.`,
       success: true,
-      deletedCount: result.deletedCount,
+      deletedCount: result.count,
     });
   } catch (error) {
     console.error(error.message);

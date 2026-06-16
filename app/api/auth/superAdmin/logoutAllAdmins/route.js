@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -14,19 +12,17 @@ export async function POST(request) {
       );
     }
 
-    await dbConnect();
-
-    await Admin.updateMany(
-      {},
-      { activeStatus: false, token: null }
-    );
+    await prisma.admin.updateMany({
+      data: { activeStatus: false, token: null },
+    });
 
     // Trigger admin refresh so all admins get kicked
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { adminTriggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { adminTriggeredAt: now },
+      create: { id: 1, adminTriggeredAt: now },
+    });
 
     return NextResponse.json({
       message: "All admins logged out successfully.",

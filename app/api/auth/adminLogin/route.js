@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
-import LoginAttempt from "@/lib/models/loginAttempt";
+import prisma from "@/lib/prisma";
 import { createJWT } from "@/lib/utils";
 import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/constants";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
   try {
-    await LoginAttempt.create({ identityNumber, ipAddress, success, reason });
+    await prisma.loginAttempt.create({ data: { identityNumber, ipAddress, success, reason } });
   } catch (err) {
     console.error("Failed to log login attempt:", err.message);
   }
@@ -18,8 +14,6 @@ async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
 
 export async function POST(request) {
   try {
-    await dbConnect();
-
     const ipAddress =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
@@ -32,14 +26,16 @@ export async function POST(request) {
     }
 
     let { identityNumber, password } = await request.json();
-    identityNumber = String(identityNumber).trim();
 
-    if (!identityNumber) {
+    // Validate presence BEFORE coercion — String(undefined) === "undefined" would
+    // otherwise slip past this guard and be treated as a real identity number.
+    if (identityNumber === undefined || identityNumber === null || String(identityNumber).trim() === "") {
       return NextResponse.json(
         { message: identityNumberConstant + " Is Mandatory." },
         { status: 400 }
       );
     }
+    identityNumber = String(identityNumber).trim();
 
     if (!password) {
       return NextResponse.json(
@@ -63,24 +59,26 @@ export async function POST(request) {
     }
 
     // Check SuperAdmin collection (auto-seed from env vars if collection is empty)
-    let superAdminRecord = await SuperAdmin.findOne({ identityNumber });
+    let superAdminRecord = await prisma.superAdmin.findUnique({ where: { identityNumber } });
     if (!superAdminRecord) {
-      const superAdminCount = await SuperAdmin.countDocuments();
+      const superAdminCount = await prisma.superAdmin.count();
       if (
         superAdminCount === 0 &&
         identityNumber === process.env.SUPER_ADMIN_ITS &&
         process.env.ADMIN_PASSWORD
       ) {
         try {
-          superAdminRecord = await SuperAdmin.create({
-            identityNumber,
-            password: process.env.ADMIN_PASSWORD,
-            createdBy: "system",
+          superAdminRecord = await prisma.superAdmin.create({
+            data: {
+              identityNumber,
+              password: process.env.ADMIN_PASSWORD,
+              createdBy: "system",
+            },
           });
         } catch (seedError) {
           // Race condition: another request already seeded — fetch the existing record
-          if (seedError.code === 11000) {
-            superAdminRecord = await SuperAdmin.findOne({ identityNumber });
+          if (seedError.code === "P2002") {
+            superAdminRecord = await prisma.superAdmin.findUnique({ where: { identityNumber } });
           } else {
             throw seedError;
           }
@@ -100,20 +98,11 @@ export async function POST(request) {
       const adminToken = createJWT(identityNumber, { adminAuth: true, superAdmin: true });
 
       // Update or create user record
-      const existingUser = await User.findOne({ identityNumber });
-      if (existingUser) {
-        await User.findOneAndUpdate(
-          { identityNumber },
-          { activeStatus: true, token: adminToken, loggedInToday: true }
-        );
-      } else {
-        await User.create({
-          identityNumber,
-          activeStatus: true,
-          token: adminToken,
-          loggedInToday: true,
-        });
-      }
+      await prisma.user.upsert({
+        where: { identityNumber },
+        update: { activeStatus: true, token: adminToken, loggedInToday: true },
+        create: { identityNumber, activeStatus: true, token: adminToken, loggedInToday: true },
+      });
 
       await logLoginAttempt(identityNumber, ipAddress, true, "Super admin login");
 
@@ -135,7 +124,7 @@ export async function POST(request) {
     }
 
     // Regular admin login - check Admin collection
-    const adminUser = await Admin.findOne({ identityNumber });
+    const adminUser = await prisma.admin.findUnique({ where: { identityNumber } });
 
     if (!adminUser) {
       await logLoginAttempt(identityNumber, ipAddress, false, "Not an admin");
@@ -167,26 +156,17 @@ export async function POST(request) {
     const adminToken = createJWT(identityNumber, { adminAuth: true });
 
     // Update admin record
-    await Admin.findOneAndUpdate(
-      { identityNumber },
-      { activeStatus: true, token: adminToken, loggedInToday: true }
-    );
+    await prisma.admin.update({
+      where: { identityNumber },
+      data: { activeStatus: true, token: adminToken, loggedInToday: true },
+    });
 
     // Update or create user record
-    const existingUser = await User.findOne({ identityNumber });
-    if (existingUser) {
-      await User.findOneAndUpdate(
-        { identityNumber },
-        { activeStatus: true, token: adminToken, loggedInToday: true }
-      );
-    } else {
-      await User.create({
-        identityNumber,
-        activeStatus: true,
-        token: adminToken,
-        loggedInToday: true,
-      });
-    }
+    await prisma.user.upsert({
+      where: { identityNumber },
+      update: { activeStatus: true, token: adminToken, loggedInToday: true },
+      create: { identityNumber, activeStatus: true, token: adminToken, loggedInToday: true },
+    });
 
     await logLoginAttempt(identityNumber, ipAddress, true, "Admin login with password");
 

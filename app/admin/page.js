@@ -648,7 +648,7 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {filteredUsers.map((user, index) => (
-                  <tr key={user._id} className={user.activeStatus ? "row-active" : "row-inactive"}>
+                  <tr key={user.identityNumber} className={user.activeStatus ? "row-active" : "row-inactive"}>
                     <td>{index + 1}</td>
                     <td>
                       {editingUser === user.identityNumber ? (

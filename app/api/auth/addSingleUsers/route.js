@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -12,8 +11,6 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-
-    await dbConnect();
 
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin && !verifySuperAdmin(user)) {
@@ -33,7 +30,7 @@ export async function POST(request) {
       );
     }
 
-    const alreadyExist = await User.findOne({ identityNumber });
+    const alreadyExist = await prisma.user.findUnique({ where: { identityNumber } });
 
     if (alreadyExist) {
       return NextResponse.json(
@@ -42,14 +39,7 @@ export async function POST(request) {
       );
     }
 
-    const createdUser = await User.create({ identityNumber });
-
-    if (!createdUser) {
-      return NextResponse.json(
-        { message: "User Not Added." },
-        { status: 404 }
-      );
-    }
+    const createdUser = await prisma.user.create({ data: { identityNumber } });
 
     return NextResponse.json({ message: "User Added", createdUser });
   } catch (error) {

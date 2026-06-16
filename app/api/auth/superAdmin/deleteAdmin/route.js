@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function DELETE(request) {
@@ -14,8 +12,6 @@ export async function DELETE(request) {
       );
     }
 
-    await dbConnect();
-
     const { identityNumber } = await request.json();
 
     if (!identityNumber) {
@@ -25,7 +21,7 @@ export async function DELETE(request) {
       );
     }
 
-    const admin = await Admin.findOne({ identityNumber });
+    const admin = await prisma.admin.findUnique({ where: { identityNumber } });
     if (!admin) {
       return NextResponse.json(
         { message: "Admin not found." },
@@ -33,14 +29,15 @@ export async function DELETE(request) {
       );
     }
 
-    await Admin.deleteOne({ identityNumber });
+    await prisma.admin.delete({ where: { identityNumber } });
 
     // Trigger admin refresh
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { adminTriggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { adminTriggeredAt: now },
+      create: { id: 1, adminTriggeredAt: now },
+    });
 
     return NextResponse.json({
       message: "Admin deleted successfully.",

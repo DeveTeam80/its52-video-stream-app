@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
-import Admin from "@/lib/models/admin";
-import SuperAdmin from "@/lib/models/superAdmin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 
 export async function DELETE(request) {
@@ -16,8 +12,6 @@ export async function DELETE(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     const isSuperAdmin = verifySuperAdmin(user);
     if (!isAdmin && !isSuperAdmin) {
@@ -28,32 +22,33 @@ export async function DELETE(request) {
     }
 
     // Get all admin ITS numbers to exclude them
-    const admins = await Admin.find({}, { identityNumber: 1 });
+    const admins = await prisma.admin.findMany({ select: { identityNumber: true } });
     const adminIts = admins.map((a) => a.identityNumber);
 
     // Also exclude ALL super admin ITS numbers
-    const superAdmins = await SuperAdmin.find({}, { identityNumber: 1 });
+    const superAdmins = await prisma.superAdmin.findMany({ select: { identityNumber: true } });
     superAdmins.forEach((sa) => {
       if (!adminIts.includes(sa.identityNumber)) {
         adminIts.push(sa.identityNumber);
       }
     });
 
-    const result = await User.deleteMany({
-      identityNumber: { $nin: adminIts },
+    const result = await prisma.user.deleteMany({
+      where: { identityNumber: { notIn: adminIts } },
     });
 
     // Trigger refresh so deleted users get kicked
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { triggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { triggeredAt: now },
+      create: { id: 1, triggeredAt: now },
+    });
 
     return NextResponse.json({
-      message: `${result.deletedCount} users deleted successfully.`,
+      message: `${result.count} users deleted successfully.`,
       success: true,
-      deletedCount: result.deletedCount,
+      deletedCount: result.count,
     });
   } catch (error) {
     console.error(error.message);

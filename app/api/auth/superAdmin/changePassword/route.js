@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
-import RefreshSignal from "@/lib/models/refreshSignal";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 import { MAX_PASSWORD_LENGTH } from "@/lib/constants";
 
@@ -14,8 +12,6 @@ export async function PUT(request) {
         { status: 403 }
       );
     }
-
-    await dbConnect();
 
     const { identityNumber, newPassword } = await request.json();
 
@@ -33,7 +29,7 @@ export async function PUT(request) {
       );
     }
 
-    const admin = await Admin.findOne({ identityNumber });
+    const admin = await prisma.admin.findUnique({ where: { identityNumber } });
     if (!admin) {
       return NextResponse.json(
         { message: "Admin not found." },
@@ -41,17 +37,18 @@ export async function PUT(request) {
       );
     }
 
-    await Admin.findOneAndUpdate(
-      { identityNumber },
-      { password: newPassword }
-    );
+    await prisma.admin.update({
+      where: { identityNumber },
+      data: { password: newPassword },
+    });
 
     // Trigger admin refresh so affected admin gets kicked
-    await RefreshSignal.findOneAndUpdate(
-      {},
-      { adminTriggeredAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const now = new Date();
+    await prisma.refreshSignal.upsert({
+      where: { id: 1 },
+      update: { adminTriggeredAt: now },
+      create: { id: 1, adminTriggeredAt: now },
+    });
 
     return NextResponse.json({
       message: "Password changed successfully.",

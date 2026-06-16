@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import User from "@/lib/models/user";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifyAdmin } from "@/lib/auth";
 
 export async function POST(request) {
@@ -13,8 +12,6 @@ export async function POST(request) {
       );
     }
 
-    await dbConnect();
-
     const isAdmin = await verifyAdmin(user.identityNumber);
     if (!isAdmin) {
       return NextResponse.json(
@@ -25,18 +22,27 @@ export async function POST(request) {
 
     const { identityNumberArr } = await request.json();
 
-    if (!identityNumberArr) {
+    if (!identityNumberArr || !Array.isArray(identityNumberArr) || identityNumberArr.length === 0) {
       return NextResponse.json(
         { message: identityNumberArr + " Is Mandatory." },
         { status: 400 }
       );
     }
 
-    const createdUser = await User.insertMany(identityNumberArr);
+    // Normalize entries (accept either strings or { identityNumber } objects)
+    const data = identityNumberArr
+      .map((entry) =>
+        typeof entry === "string"
+          ? entry.trim()
+          : String(entry?.identityNumber || "").trim()
+      )
+      .filter(Boolean)
+      .map((identityNumber) => ({ identityNumber }));
 
-    if (!createdUser) {
-      return NextResponse.json({ message: "Not Added." }, { status: 404 });
-    }
+    const createdUser = await prisma.user.createMany({
+      data,
+      skipDuplicates: true,
+    });
 
     return NextResponse.json({ message: "All Added", createdUser });
   } catch (error) {

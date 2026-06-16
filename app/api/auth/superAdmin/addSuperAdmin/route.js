@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import SuperAdmin from "@/lib/models/superAdmin";
-import Admin from "@/lib/models/admin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 import { MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/constants";
 
@@ -14,8 +12,6 @@ export async function POST(request) {
         { status: 403 }
       );
     }
-
-    await dbConnect();
 
     let { identityNumber, password } = await request.json();
     identityNumber = String(identityNumber).trim();
@@ -42,7 +38,7 @@ export async function POST(request) {
     }
 
     // Check if already a super admin
-    const existingSuperAdmin = await SuperAdmin.findOne({ identityNumber });
+    const existingSuperAdmin = await prisma.superAdmin.findUnique({ where: { identityNumber } });
     if (existingSuperAdmin) {
       return NextResponse.json(
         { message: "This ITS is already a super admin." },
@@ -51,7 +47,7 @@ export async function POST(request) {
     }
 
     // Check if this ITS is a regular admin — block it
-    const existingAdmin = await Admin.findOne({ identityNumber });
+    const existingAdmin = await prisma.admin.findUnique({ where: { identityNumber } });
     if (existingAdmin) {
       return NextResponse.json(
         { message: "This ITS is currently a regular admin. Remove them as admin first before adding as super admin." },
@@ -60,13 +56,15 @@ export async function POST(request) {
     }
 
     try {
-      await SuperAdmin.create({
-        identityNumber,
-        password,
-        createdBy: user.identityNumber,
+      await prisma.superAdmin.create({
+        data: {
+          identityNumber,
+          password,
+          createdBy: user.identityNumber,
+        },
       });
     } catch (createError) {
-      if (createError.code === 11000) {
+      if (createError.code === "P2002") {
         return NextResponse.json(
           { message: "This ITS is already a super admin." },
           { status: 400 }

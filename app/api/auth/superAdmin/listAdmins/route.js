@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import Admin from "@/lib/models/admin";
+import prisma from "@/lib/prisma";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 
 export async function GET(request) {
@@ -13,9 +12,7 @@ export async function GET(request) {
       );
     }
 
-    await dbConnect();
-
-    const admins = await Admin.find({}).sort({ createdAt: -1 });
+    const admins = await prisma.admin.findMany({ orderBy: { createdAt: "desc" } });
     return NextResponse.json({ admins });
   } catch (error) {
     console.error(error.message);
