@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import RefreshSignal from "@/lib/models/refreshSignal";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function POST(request) {
   try {
@@ -28,6 +29,8 @@ export async function POST(request) {
       { triggeredAt: new Date() },
       { upsert: true, new: true }
     );
+
+    await logAdminAction({ actor: user, action: "REFRESH_ALL" });
 
     return NextResponse.json({
       message: "Refresh signal sent to all users.",

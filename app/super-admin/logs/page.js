@@ -13,6 +13,7 @@ const ACTION_LABELS = {
   DELETE_ALL_USERS: "Deleted all users",
   LOGOUT_USER: "Logged out user",
   LOGOUT_ALL_USERS: "Logged out all users",
+  REFRESH_ALL: "Refreshed all users",
 };
 
 export default function LogsPage() {
