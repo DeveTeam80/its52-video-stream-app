@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function POST(request) {
   try {
@@ -48,6 +49,8 @@ export async function POST(request) {
       await User.create({ identityNumber: trimmed });
       created++;
     }
+
+    await logAdminAction({ actor: user, action: "IMPORT_USERS", details: `${created} created, ${skipped} skipped` });
 
     return NextResponse.json({
       message: `Imported ${created} users. ${skipped} duplicates skipped.`,

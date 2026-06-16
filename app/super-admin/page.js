@@ -527,6 +527,12 @@ export default function SuperAdminPage() {
               <input
                 className="btn-login btn"
                 type="button"
+                value="Activity Log"
+                onClick={() => router.push("/super-admin/logs")}
+              />
+              <input
+                className="btn-login btn"
+                type="button"
                 value="Logout All Admins"
                 onClick={logoutAllAdmins}
               />
@@ -564,6 +570,12 @@ export default function SuperAdminPage() {
                     onSelect={() => router.push("/admin")}
                   >
                     Admin Panel
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    className="nav-menu-item"
+                    onSelect={() => router.push("/super-admin/logs")}
+                  >
+                    Activity Log
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
                     className="nav-menu-item"

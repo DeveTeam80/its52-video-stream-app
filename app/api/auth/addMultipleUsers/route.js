@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import { verifyToken, verifyAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function POST(request) {
   try {
@@ -37,6 +38,8 @@ export async function POST(request) {
     if (!createdUser) {
       return NextResponse.json({ message: "Not Added." }, { status: 404 });
     }
+
+    await logAdminAction({ actor: user, action: "CREATE_USERS_BULK", details: `${Array.isArray(createdUser) ? createdUser.length : 0} users added` });
 
     return NextResponse.json({ message: "All Added", createdUser });
   } catch (error) {

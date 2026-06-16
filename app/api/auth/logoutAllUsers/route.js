@@ -4,6 +4,7 @@ import User from "@/lib/models/user";
 import Admin from "@/lib/models/admin";
 import RefreshSignal from "@/lib/models/refreshSignal";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function GET(request) {
   try {
@@ -43,6 +44,8 @@ export async function GET(request) {
       { triggeredAt: new Date() },
       { upsert: true, new: true }
     );
+
+    await logAdminAction({ actor: user, action: "LOGOUT_ALL_USERS", details: "All users logged out" });
 
     return NextResponse.json({
       message: "All Users Logged Out Successfully.",

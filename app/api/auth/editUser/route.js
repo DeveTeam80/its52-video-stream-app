@@ -4,6 +4,7 @@ import User from "@/lib/models/user";
 import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function PUT(request) {
   try {
@@ -82,6 +83,8 @@ export async function PUT(request) {
       { identityNumber: oldIdentityNumber },
       { identityNumber: newIdentityNumber, activeStatus: false, token: null }
     );
+
+    await logAdminAction({ actor: user, action: "EDIT_USER", targetIts: oldIdentityNumber, details: `Renamed to ${newIdentityNumber}` });
 
     return NextResponse.json({
       message: "User updated successfully.",

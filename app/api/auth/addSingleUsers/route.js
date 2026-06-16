@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function POST(request) {
   try {
@@ -50,6 +51,8 @@ export async function POST(request) {
         { status: 404 }
       );
     }
+
+    await logAdminAction({ actor: user, action: "CREATE_USER", targetIts: identityNumber });
 
     return NextResponse.json({ message: "User Added", createdUser });
   } catch (error) {

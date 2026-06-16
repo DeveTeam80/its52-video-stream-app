@@ -5,6 +5,7 @@ import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import RefreshSignal from "@/lib/models/refreshSignal";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function DELETE(request) {
   try {
@@ -49,6 +50,8 @@ export async function DELETE(request) {
       { triggeredAt: new Date() },
       { upsert: true, new: true }
     );
+
+    await logAdminAction({ actor: user, action: "DELETE_ALL_USERS", details: `${result.deletedCount} users deleted` });
 
     return NextResponse.json({
       message: `${result.deletedCount} users deleted successfully.`,

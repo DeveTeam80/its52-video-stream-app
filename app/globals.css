@@ -239,6 +239,14 @@
   display: flex;
   gap: 0.5rem;
 }
+/* Logs page nav (simple back + logout; stays visible on mobile, unlike
+   .navbar-actions which is replaced by the hamburger on the admin pages). */
+.logs-nav-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 /* Radix-portaled mobile menu (rendered into <body>, so it escapes the
    .content opacity:0.95 stacking context that trapped the old menu). Styled
    globally since it lives outside the page tree; only opens on mobile because

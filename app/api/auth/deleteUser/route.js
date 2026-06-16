@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function DELETE(request) {
   try {
@@ -42,6 +43,8 @@ export async function DELETE(request) {
     }
 
     await User.deleteOne({ identityNumber });
+
+    await logAdminAction({ actor: user, action: "DELETE_USER", targetIts: identityNumber });
 
     return NextResponse.json({
       message: "User deleted successfully.",
