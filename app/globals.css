@@ -148,7 +148,8 @@
    Admin / super-admin are intentionally excluded for now.
    ===================================================================== */
 .login-page::before,
-.home-page::before {
+.home-page::before,
+.admin-page::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -162,7 +163,9 @@
 /* Pages stay transparent so the backdrop shows through the gaps. */
 .login-page,
 .home-page,
-.home-page .wrapper {
+.home-page .wrapper,
+.admin-page,
+.admin-page .wrapper {
   background: transparent;
 }
 
@@ -655,7 +658,8 @@
   /* BACKGROUND IMAGE — mobile version (portrait). Adjust background-position
      here to change the focal point on phones independently of desktop. */
   .login-page::before,
-  .home-page::before {
+  .home-page::before,
+  .admin-page::before {
     background-position: center;
   }
 

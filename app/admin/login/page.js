@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
 
   return (
     <form name="AdminForm" onSubmit={login}>
-      <section className="wrapper">
+      <section className="wrapper login-page">
         <img
           id="mobile-bg"
           src="https://www.its52.com/imgs/1443/bg_Login_Jamea.jpg?v1"
