@@ -239,6 +239,11 @@
   display: flex;
   gap: 0.5rem;
 }
+/* The mobile menu backdrop only exists in the DOM while the hamburger menu is
+   open (mobile-only). Hidden on desktop as a safety guard. */
+.nav-menu-backdrop {
+  display: none;
+}
 .nav-hamburger {
   display: none;
   flex-direction: column;
@@ -705,17 +710,19 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    position: relative;
-    z-index: 1000; /* lift the navbar + its dropdown above the sections below */
   }
   .nav-hamburger {
     display: flex;
   }
+  /* The dropdown is position:FIXED (not absolute) so it paints in the root
+     stacking context, anchored to the viewport — it can no longer be covered
+     by later content rows (the real cause of the old "hides behind" bug).
+     Safe here because NO ancestor has transform / filter / will-change. */
   .navbar-main .navbar-actions {
     display: none;
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
+    position: fixed;
+    top: 96px; /* sits just below the navbar — cosmetic, tune to taste */
+    right: 12px;
     flex-direction: column;
     gap: 0.4rem;
     background: #fff;
@@ -723,8 +730,17 @@
     padding: 0.6rem;
     border-radius: 10px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    z-index: 100;
+    z-index: 1201; /* above page content; below toast (9999) + confirm (10000) */
     min-width: 190px;
+    max-width: calc(100vw - 24px);
+  }
+  /* Transparent full-viewport layer to catch taps outside the menu (close). */
+  .nav-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: transparent;
   }
   .navbar-main .navbar-actions.navbar-actions--open {
     display: flex;

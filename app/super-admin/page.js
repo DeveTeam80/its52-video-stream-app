@@ -521,6 +521,13 @@ export default function SuperAdminPage() {
               <span></span>
               <span></span>
             </button>
+            {menuOpen && (
+              <div
+                className="nav-menu-backdrop"
+                onClick={() => setMenuOpen(false)}
+                aria-hidden="true"
+              />
+            )}
             <div
               className={`navbar-actions${menuOpen ? " navbar-actions--open" : ""}`}
               onClick={() => setMenuOpen(false)}
