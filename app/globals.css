@@ -321,6 +321,14 @@
   max-width: 700px;
 }
 
+/* Hide the contact message while the player is fullscreen (class toggled on
+   #home-body by the Plyr enter/exit-fullscreen handlers). This sits outside the
+   .content opacity stacking context, so it reliably hides the message that would
+   otherwise overlap the iPhone CSS-fallback fullscreen video. */
+.home-page.player-fs .new-container {
+  display: none;
+}
+
 /* No video fallback */
 .no-video-message {
   text-align: center;

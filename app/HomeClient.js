@@ -114,10 +114,23 @@ export default function HomeClient() {
         muted: true,
         youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1, mute: 1 },
       });
+
+      // Hide the contact message while the player is fullscreen. On iPhone,
+      // Plyr's CSS-fallback fullscreen is trapped inside an opacity:0.95 stacking
+      // context, so the message would otherwise paint over the video. Toggling a
+      // class on #home-body (outside that context) reliably hides it. The
+      // enterfullscreen/exitfullscreen events fire in both native and iOS-fallback modes.
+      plyrRef.current.on("enterfullscreen", () =>
+        bodyRef.current?.classList.add("player-fs")
+      );
+      plyrRef.current.on("exitfullscreen", () =>
+        bodyRef.current?.classList.remove("player-fs")
+      );
     });
 
     return () => {
       cancelled = true;
+      bodyRef.current?.classList.remove("player-fs");
       try {
         plyrRef.current?.destroy();
       } catch {
