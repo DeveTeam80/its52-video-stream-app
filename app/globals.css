@@ -138,31 +138,38 @@
   justify-content: flex-start;
 }
 
-/* ===== Full-viewport mosque backdrop (home + admin + super-admin) =====
-   Matches the ITS52 login page: the #mobile-bg image is fixed and covers the
-   whole viewport on every screen size (portrait + landscape), and the content
-   cards float on top via their translucent backgrounds. Uses a fixed <img>
-   rather than background-attachment:fixed, which iOS Safari mishandles. */
-.home-page #mobile-bg,
-.admin-page #mobile-bg {
+/* =====================================================================
+   BACKGROUND IMAGE — full-viewport mosque backdrop (LOGIN + HOME only)
+   ---------------------------------------------------------------------
+   DESKTOP / base version. A fixed ::before pseudo-element covers the whole
+   viewport and sits BEHIND the content (which floats on top via its
+   translucent cards). Uses a position:fixed element with background-size:
+   cover — NOT background-attachment:fixed, which iOS Safari mishandles.
+   Admin / super-admin are intentionally excluded for now.
+   ===================================================================== */
+.login-page::before,
+.home-page::before {
+  content: "";
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  object-fit: cover;
-  object-position: center;
+  inset: 0;
+  background-image: url("https://www.its52.com/imgs/1443/bg_Login_Jamea.jpg?v1");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   z-index: -1;
-  display: block;
-  margin: 0;
-  max-width: none;
 }
+
+/* Pages stay transparent so the backdrop shows through the gaps. */
+.login-page,
 .home-page,
-.admin-page,
-.home-page .wrapper,
-.admin-page .wrapper {
+.home-page .wrapper {
   background: transparent;
+}
+
+/* Hide the old inline band <img> everywhere — the ::before backdrop replaces
+   it on login/home, and removes the broken band on admin/super-admin. */
+#mobile-bg {
+  display: none;
 }
 
 .home-page .wrapper .content {
@@ -645,6 +652,13 @@
    Mobile responsiveness (phones / small tablets)
    =================================================================== */
 @media (max-width: 768px) {
+  /* BACKGROUND IMAGE — mobile version (portrait). Adjust background-position
+     here to change the focal point on phones independently of desktop. */
+  .login-page::before,
+  .home-page::before {
+    background-position: center;
+  }
+
   /* Home page: natural height + scrolling instead of a locked single screen
      (fixes content being cut off and unscrollable on iPhone). */
   .home-page,

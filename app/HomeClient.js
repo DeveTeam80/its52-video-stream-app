@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 import ToastContainer, { showToast } from "./components/Toast";
 
@@ -99,20 +98,25 @@ export default function HomeClient() {
   useEffect(() => {
     if (!videoId || !playerRef.current || plyrRef.current) return;
 
-    const player = new Plyr(playerRef.current, {
-      controls: ["play-large", "play", "current-time", "mute", "volume", "fullscreen"],
-      clickToPlay: false,
-      fullscreen: { enabled: true, fallback: true, iosNative: false },
-      playsinline: true,
-      autoplay: true,
-      youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1 },
+    let cancelled = false;
+    // Load Plyr only in the browser — it touches `document` at import time,
+    // which would crash during server-side rendering of this client component.
+    import("plyr").then(({ default: Plyr }) => {
+      if (cancelled || !playerRef.current || plyrRef.current) return;
+      plyrRef.current = new Plyr(playerRef.current, {
+        controls: ["play-large", "play", "current-time", "mute", "volume", "fullscreen"],
+        clickToPlay: false,
+        fullscreen: { enabled: true, fallback: true, iosNative: false },
+        playsinline: true,
+        autoplay: true,
+        youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1 },
+      });
     });
 
-    plyrRef.current = player;
-
     return () => {
+      cancelled = true;
       try {
-        player.destroy();
+        plyrRef.current?.destroy();
       } catch {
         // ignore teardown errors
       }
