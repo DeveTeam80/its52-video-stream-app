@@ -123,13 +123,17 @@
 }
 
 /* ===== Home page overrides ===== */
+/* dvh (dynamic viewport height) respects the iOS Safari address bar; 100vh is
+   the fallback for older browsers. */
 .home-page {
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 .home-page .wrapper {
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   justify-content: flex-start;
 }
@@ -165,22 +169,58 @@
   width: 100%;
 }
 
-/* Make Vlite.js player fill its container, capped to fit viewport */
-.home-page .player-content .v-vlite {
-  width: 100% !important;
-  max-width: calc(65vh * 16 / 9) !important;
-  height: 0 !important;
-  padding-bottom: min(56.25%, 65vh) !important;
-  position: relative !important;
-  margin: 0 auto !important;
+/* Plyr player — fill the container, capped so it fits the viewport height.
+   Plyr's own CSS provides the responsive 16:9 wrapper. */
+.home-page .player-content .plyr {
+  width: 100%;
+  max-width: calc(65vh * 16 / 9);
+  margin: 0 auto;
 }
 
-.home-page .player-content .v-vlite iframe {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  width: 100% !important;
-  height: 100% !important;
+/* HARD CONSTRAINT: block ALL interaction with the YouTube iframe — users must
+   never be able to click through to YouTube (logo, title, "Watch on YouTube",
+   related videos). Plyr's controls stay interactive because they are separate
+   DOM driven via the YouTube IFrame API, not by clicking inside the iframe. */
+.home-page .player-content .plyr__video-wrapper,
+.home-page .player-content .plyr iframe {
+  pointer-events: none !important;
+}
+.home-page .player-content .plyr__controls,
+.home-page .player-content .plyr__control--overlaid {
+  pointer-events: auto !important;
+}
+
+/* Nav action buttons (home page) */
+.nav-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Admin / super-admin navbar actions + mobile hamburger toggle.
+   Desktop: buttons inline, hamburger hidden (identical to current behavior). */
+.navbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 46px;
+  height: 40px;
+  padding: 0 11px;
+  background: #0e4653;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.nav-hamburger span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: #fff;
+  border-radius: 2px;
 }
 
 .home-page .new-container {
@@ -572,4 +612,127 @@
 @keyframes confirm-scale-in {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* ===================================================================
+   Mobile responsiveness (phones / small tablets)
+   =================================================================== */
+@media (max-width: 768px) {
+  /* Home page: natural height + scrolling instead of a locked single screen
+     (fixes content being cut off and unscrollable on iPhone). */
+  .home-page,
+  .home-page .wrapper {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Content blocks span the screen on mobile (override the desktop narrow widths). */
+  .home-page .wrapper .content,
+  .admin-page .wrapper .content {
+    max-width: 100%;
+  }
+
+  /* Nav stacks; logo shrinks; buttons wrap and centre. */
+  .nav {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .home-page .nav .nav-img,
+  .admin-page .nav .nav-img {
+    height: 64px;
+  }
+  .nav-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-login {
+    width: auto;
+    min-width: 120px;
+  }
+
+  /* Admin / super-admin navbar → collapse buttons into a hamburger dropdown.
+     Defined after the broad .nav rule so it wins (same specificity). */
+  .navbar-main {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+  }
+  .nav-hamburger {
+    display: flex;
+  }
+  .navbar-main .navbar-actions {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    flex-direction: column;
+    gap: 0.4rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 0.6rem;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    min-width: 190px;
+  }
+  .navbar-main .navbar-actions.navbar-actions--open {
+    display: flex;
+  }
+  .navbar-main .navbar-actions .btn-login {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* Player fills the width in portrait. */
+  .home-page .player-content .plyr {
+    max-width: 100%;
+  }
+
+  /* Contact box near-full width. */
+  .home-page .new-container {
+    width: 95%;
+  }
+
+  /* Admin / super-admin: stack the action columns, let wide tables scroll sideways. */
+  .admin-page .admin-actions-row {
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 100%;
+  }
+  .admin-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 65vh;
+  }
+  .admin-table {
+    font-size: 0.85rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem 0.6rem;
+  }
+  .admin-search-bar {
+    flex-wrap: wrap;
+  }
+  .admin-search-input {
+    max-width: 100%;
+  }
+}
+
+/* Extra-small phones */
+@media (max-width: 420px) {
+  .home-page .nav .nav-img,
+  .admin-page .nav .nav-img {
+    height: 52px;
+  }
+  .btn-login {
+    font-size: 14px;
+    height: 38px;
+  }
 }

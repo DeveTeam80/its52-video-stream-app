@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [currentVideoUrl, setCurrentVideoUrl] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
   const bodyRef = useRef(null);
 
@@ -465,13 +466,27 @@ export default function AdminPage() {
       <section className="wrapper" style={{ height: "auto", minHeight: "100vh" }}>
         {/* Row 1: Logo + Logout All button */}
         <div className="content" style={{ marginTop: "2rem" }}>
-          <div className="nav">
+          <div className="nav navbar-main">
             <img
               className="logo-image nav-img"
               src="/taiyebi-mohalla-pune.png"
               alt="Logo"
             />
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="nav-hamburger"
+              aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <div
+              className={`navbar-actions${menuOpen ? " navbar-actions--open" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
               <input
                 className="btn-login btn"
                 type="button"

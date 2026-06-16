@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Script from "next/script";
+import Plyr from "plyr";
+import "plyr/dist/plyr.css";
 import ToastContainer, { showToast } from "./components/Toast";
 
 export default function HomeClient() {
   const router = useRouter();
   const bodyRef = useRef(null);
   const playerRef = useRef(null);
-  const playerInitialized = useRef(false);
-  const [coreLoaded, setCoreLoaded] = useState(false);
+  const plyrRef = useRef(null);
   const [videoId, setVideoId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -90,43 +90,35 @@ export default function HomeClient() {
     return () => clearInterval(interval);
   }, []);
 
+  // Initialise the Plyr player once the video id is known.
+  // Plyr drives the YouTube player via the IFrame API (postMessage), so the
+  // iframe itself stays non-interactive (pointer-events:none in CSS) — users
+  // can never click through to YouTube. clickToPlay:false ensures nothing
+  // depends on tapping the video surface. fallback:true gives a CSS-based
+  // fullscreen that works on iPhone (where the Fullscreen API is unavailable).
   useEffect(() => {
-    if (videoId && playerRef.current) {
-      playerRef.current.setAttribute("data-youtube-id", videoId);
-      initPlayer();
-    }
-  }, [videoId, coreLoaded]);
+    if (!videoId || !playerRef.current || plyrRef.current) return;
 
-  function initPlayer() {
-    if (playerInitialized.current) return;
-    if (!videoId) return;
-    if (!window.Vlitejs || !window.VlitejsYoutube) return;
-
-    playerInitialized.current = true;
-    if (!window.__vliteYoutubeRegistered) {
-      window.Vlitejs.registerProvider("youtube", window.VlitejsYoutube);
-      window.__vliteYoutubeRegistered = true;
-    }
-    new window.Vlitejs("#player", {
-      options: {
-        controls: true,
-        autoplay: true,
-        playPause: false,
-        progressBar: false,
-        time: true,
-        volume: true,
-        fullscreen: true,
-        poster: "https://www.its52.com/imgs/1443/bg_Login_Jamea.jpg?v1",
-        bigPlay: true,
-        playsinline: true,
-        loop: false,
-        muted: false,
-        autoHide: true,
-      },
-      provider: ["youtube"],
-      onReady: function () {},
+    const player = new Plyr(playerRef.current, {
+      controls: ["play-large", "play", "current-time", "mute", "volume", "fullscreen"],
+      clickToPlay: false,
+      fullscreen: { enabled: true, fallback: true, iosNative: false },
+      playsinline: true,
+      autoplay: true,
+      youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1 },
     });
-  }
+
+    plyrRef.current = player;
+
+    return () => {
+      try {
+        player.destroy();
+      } catch {
+        // ignore teardown errors
+      }
+      plyrRef.current = null;
+    };
+  }, [videoId]);
 
   async function logout() {
     const token = localStorage.getItem("token");
@@ -149,10 +141,6 @@ export default function HomeClient() {
 
   return (
     <>
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/vlitejs@5/dist/vlite.css"
-      />
       <ToastContainer />
       <div id="home-body" className="home-body home-page" ref={bodyRef}>
         <section className="wrapper">
@@ -163,7 +151,7 @@ export default function HomeClient() {
                 src="/taiyebi-mohalla-pune.png"
                 alt="Logo"
               />
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div className="nav-actions">
                 {isSuperAdmin && (
                   <input
                     className="btn-login btn"
@@ -196,7 +184,12 @@ export default function HomeClient() {
           />
           <div className="content player-content" style={{ marginTop: "1rem" }}>
             {videoId ? (
-              <div id="player" ref={playerRef}></div>
+              <div
+                id="player"
+                ref={playerRef}
+                data-plyr-provider="youtube"
+                data-plyr-embed-id={videoId}
+              ></div>
             ) : (
               <div className="no-video-message">
                 <p>No video is currently available.</p>
@@ -212,20 +205,6 @@ export default function HomeClient() {
           </div>
         </section>
       </div>
-      {/* Load Vlite core first */}
-      <Script
-        src="https://cdn.jsdelivr.net/npm/vlitejs@5"
-        strategy="afterInteractive"
-        onLoad={() => setCoreLoaded(true)}
-      />
-      {/* Load YouTube provider only after core is ready */}
-      {coreLoaded && (
-        <Script
-          src="https://cdn.jsdelivr.net/npm/vlitejs@5/dist/providers/youtube.js"
-          strategy="afterInteractive"
-          onLoad={initPlayer}
-        />
-      )}
     </>
   );
 }
