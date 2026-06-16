@@ -169,6 +169,13 @@
   background: transparent;
 }
 
+/* Top-align admin / super-admin / logs content so the navbar sits at the top
+   (overrides ITS52's justify-content:center, which vertically centers sparse
+   pages like the activity log and floats the navbar into the middle). */
+.admin-page .wrapper {
+  justify-content: flex-start;
+}
+
 /* Hide the old inline band <img> everywhere — the ::before backdrop replaces
    it on login/home, and removes the broken band on admin/super-admin. */
 #mobile-bg {

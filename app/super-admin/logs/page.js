@@ -131,7 +131,7 @@ export default function LogsPage() {
         </div>
 
         {/* Row 2: Title + search + filter */}
-        <div className="content">
+        <div className="content" style={{ marginTop: "1.5rem" }}>
           <h2 style={{ textAlign: "center", margin: "0 0 1rem", color: "#0e4653" }}>
             Admin Activity Log
           </h2>
