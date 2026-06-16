@@ -239,10 +239,46 @@
   display: flex;
   gap: 0.5rem;
 }
-/* The mobile menu backdrop only exists in the DOM while the hamburger menu is
-   open (mobile-only). Hidden on desktop as a safety guard. */
-.nav-menu-backdrop {
-  display: none;
+/* Radix-portaled mobile menu (rendered into <body>, so it escapes the
+   .content opacity:0.95 stacking context that trapped the old menu). Styled
+   globally since it lives outside the page tree; only opens on mobile because
+   its trigger (.nav-hamburger) is hidden on desktop. */
+.nav-menu-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 190px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 1000; /* above page content; below toast (9999) + confirm (10000) */
+}
+.nav-menu-item {
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #0e4653;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.nav-menu-item[data-highlighted],
+.nav-menu-item:hover {
+  background: #0e4653;
+  color: #fff;
+}
+.nav-menu-item.danger {
+  color: #c50409;
+}
+.nav-menu-item.danger[data-highlighted],
+.nav-menu-item.danger:hover {
+  background: #c50409;
+  color: #fff;
 }
 .nav-hamburger {
   display: none;
@@ -704,8 +740,9 @@
     min-width: 120px;
   }
 
-  /* Admin / super-admin navbar → collapse buttons into a hamburger dropdown.
-     Defined after the broad .nav rule so it wins (same specificity). */
+  /* Admin / super-admin navbar → hamburger triggers the Radix dropdown.
+     Inline desktop buttons are hidden; the menu itself is portaled to <body>
+     and styled by .nav-menu-content (above). */
   .navbar-main {
     flex-direction: row;
     justify-content: space-between;
@@ -714,41 +751,8 @@
   .nav-hamburger {
     display: flex;
   }
-  /* The dropdown is position:FIXED (not absolute) so it paints in the root
-     stacking context, anchored to the viewport — it can no longer be covered
-     by later content rows (the real cause of the old "hides behind" bug).
-     Safe here because NO ancestor has transform / filter / will-change. */
-  .navbar-main .navbar-actions {
+  .navbar-actions {
     display: none;
-    position: fixed;
-    top: 96px; /* sits just below the navbar — cosmetic, tune to taste */
-    right: 12px;
-    flex-direction: column;
-    gap: 0.4rem;
-    background: #fff;
-    border: 1px solid #ddd;
-    padding: 0.6rem;
-    border-radius: 10px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    z-index: 1201; /* above page content; below toast (9999) + confirm (10000) */
-    min-width: 190px;
-    max-width: calc(100vw - 24px);
-  }
-  /* Transparent full-viewport layer to catch taps outside the menu (close). */
-  .nav-menu-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 1200;
-    background: transparent;
-  }
-  .navbar-main .navbar-actions.navbar-actions--open {
-    display: flex;
-  }
-  .navbar-main .navbar-actions .btn-login {
-    width: 100%;
-    min-width: 0;
-    margin: 0;
   }
 
   /* Player fills the width in portrait. */

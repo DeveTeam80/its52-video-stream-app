@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ToastContainer, { showToast } from "../components/Toast";
 import ConfirmDialogContainer, { confirmAction } from "../components/ConfirmDialog";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -23,7 +24,6 @@ export default function SuperAdminPage() {
   // Add super admin
   const [newSuperAdminIts, setNewSuperAdminIts] = useState("");
   const [newSuperAdminPassword, setNewSuperAdminPassword] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
   const bodyRef = useRef(null);
 
@@ -510,28 +510,8 @@ export default function SuperAdminPage() {
               src="/taiyebi-mohalla-pune.png"
               alt="Logo"
             />
-            <button
-              type="button"
-              className="nav-hamburger"
-              aria-label="Toggle menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((o) => !o)}
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-            {menuOpen && (
-              <div
-                className="nav-menu-backdrop"
-                onClick={() => setMenuOpen(false)}
-                aria-hidden="true"
-              />
-            )}
-            <div
-              className={`navbar-actions${menuOpen ? " navbar-actions--open" : ""}`}
-              onClick={() => setMenuOpen(false)}
-            >
+            {/* Desktop: inline buttons (unchanged) */}
+            <div className="navbar-actions">
               <input
                 className="btn-login btn"
                 type="button"
@@ -557,6 +537,49 @@ export default function SuperAdminPage() {
                 onClick={superAdminLogout}
               />
             </div>
+            {/* Mobile: Radix dropdown — portals to <body>, escaping the
+                .content opacity:0.95 stacking context that trapped the old menu. */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button type="button" className="nav-hamburger" aria-label="Menu">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  className="nav-menu-content"
+                  align="end"
+                  sideOffset={8}
+                >
+                  <DropdownMenu.Item
+                    className="nav-menu-item"
+                    onSelect={() => router.push("/")}
+                  >
+                    Home
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    className="nav-menu-item"
+                    onSelect={() => router.push("/admin")}
+                  >
+                    Admin Panel
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    className="nav-menu-item"
+                    onSelect={() => logoutAllAdmins()}
+                  >
+                    Logout All Admins
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    className="nav-menu-item danger"
+                    onSelect={() => superAdminLogout()}
+                  >
+                    Logout
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
         </div>
 
