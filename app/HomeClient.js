@@ -109,7 +109,10 @@ export default function HomeClient() {
         fullscreen: { enabled: true, fallback: true, iosNative: false },
         playsinline: true,
         autoplay: true,
-        youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1 },
+        // Browsers block autoplay WITH sound; starting muted makes autoplay
+        // fire reliably (incl. iPhone). The user taps unmute for audio.
+        muted: true,
+        youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1, mute: 1 },
       });
     });
 
