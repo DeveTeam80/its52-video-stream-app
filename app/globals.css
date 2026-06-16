@@ -138,6 +138,33 @@
   justify-content: flex-start;
 }
 
+/* ===== Full-viewport mosque backdrop (home + admin + super-admin) =====
+   Matches the ITS52 login page: the #mobile-bg image is fixed and covers the
+   whole viewport on every screen size (portrait + landscape), and the content
+   cards float on top via their translucent backgrounds. Uses a fixed <img>
+   rather than background-attachment:fixed, which iOS Safari mishandles. */
+.home-page #mobile-bg,
+.admin-page #mobile-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  object-fit: cover;
+  object-position: center;
+  z-index: -1;
+  display: block;
+  margin: 0;
+  max-width: none;
+}
+.home-page,
+.admin-page,
+.home-page .wrapper,
+.admin-page .wrapper {
+  background: transparent;
+}
+
 .home-page .wrapper .content {
   max-width: 56%;
 }
@@ -661,6 +688,7 @@
     justify-content: space-between;
     align-items: center;
     position: relative;
+    z-index: 1000; /* lift the navbar + its dropdown above the sections below */
   }
   .nav-hamburger {
     display: flex;
