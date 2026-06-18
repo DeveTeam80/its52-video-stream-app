@@ -7,6 +7,7 @@ import LoginAttempt from "@/lib/models/loginAttempt";
 import { createJWT } from "@/lib/utils";
 import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH, ADMIN_SESSION_LIFETIME_SECONDS } from "@/lib/constants";
 import { isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
+import { cleanRequired } from "@/lib/validate";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request) {
     }
 
     let { identityNumber, password } = await request.json();
-    identityNumber = String(identityNumber).trim();
+    identityNumber = cleanRequired(identityNumber);
 
     if (!identityNumber) {
       return NextResponse.json(

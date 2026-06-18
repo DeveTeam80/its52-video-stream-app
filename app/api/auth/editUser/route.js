@@ -5,6 +5,7 @@ import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/auditLog";
+import { cleanRequired } from "@/lib/validate";
 
 export async function PUT(request) {
   try {
@@ -27,8 +28,8 @@ export async function PUT(request) {
     }
 
     let { oldIdentityNumber, newIdentityNumber } = await request.json();
-    oldIdentityNumber = String(oldIdentityNumber).trim();
-    newIdentityNumber = String(newIdentityNumber).trim();
+    oldIdentityNumber = cleanRequired(oldIdentityNumber);
+    newIdentityNumber = cleanRequired(newIdentityNumber);
 
     if (!oldIdentityNumber || !newIdentityNumber) {
       return NextResponse.json(

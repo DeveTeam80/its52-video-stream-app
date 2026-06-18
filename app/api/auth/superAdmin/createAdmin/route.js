@@ -4,6 +4,7 @@ import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 import { MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/constants";
+import { cleanRequired } from "@/lib/validate";
 
 export async function POST(request) {
   try {
@@ -18,7 +19,7 @@ export async function POST(request) {
     await dbConnect();
 
     let { identityNumber, password } = await request.json();
-    identityNumber = String(identityNumber).trim();
+    identityNumber = cleanRequired(identityNumber);
 
     if (!identityNumber) {
       return NextResponse.json(

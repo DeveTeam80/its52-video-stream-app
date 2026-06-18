@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { cleanRequired } from "@/lib/validate";
 import { logAdminAction } from "@/lib/auditLog";
 
 export async function POST(request) {
@@ -25,11 +26,11 @@ export async function POST(request) {
     }
 
     let { identityNumber } = await request.json();
-    identityNumber = String(identityNumber).trim();
+    identityNumber = cleanRequired(identityNumber);
 
     if (!identityNumber) {
       return NextResponse.json(
-        { message: identityNumber + " Is Mandatory." },
+        { message: "Identity number is mandatory." },
         { status: 400 }
       );
     }
