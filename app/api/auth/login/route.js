@@ -59,7 +59,7 @@ export async function POST(request) {
       if (existingUser) {
         await User.findOneAndUpdate(
           { identityNumber },
-          { activeStatus: true, token: adminToken, loggedInToday: true }
+          { activeStatus: true, token: adminToken, loggedInToday: true, lastLoginAt: new Date() }
         );
       } else {
         await User.create({
@@ -67,6 +67,7 @@ export async function POST(request) {
           activeStatus: true,
           token: adminToken,
           loggedInToday: true,
+          lastLoginAt: new Date(),
         });
       }
 
@@ -122,7 +123,7 @@ export async function POST(request) {
 
     await User.findOneAndUpdate(
       { identityNumber },
-      { activeStatus: true, token: newToken, loggedInToday: true }
+      { activeStatus: true, token: newToken, loggedInToday: true, lastLoginAt: new Date() }
     );
 
     await logLoginAttempt(identityNumber, ipAddress, true, "Login successful");

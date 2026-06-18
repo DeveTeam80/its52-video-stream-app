@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/lib/models/user";
 import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { csvRow } from "@/lib/csv";
+import { isToday } from "@/lib/date";
 
 export async function GET(request) {
   try {
@@ -25,10 +27,15 @@ export async function GET(request) {
 
     const users = await User.find({}).sort({ createdAt: -1 });
 
-    // Build CSV
-    const header = "Sr No,ITS Number,Status,Logged In Today";
+    // Build CSV (escaped to prevent broken columns / spreadsheet formula injection)
+    const header = csvRow(["Sr No", "ITS Number", "Status", "Logged In Today"]);
     const rows = users.map((u, i) =>
-      `${i + 1},${u.identityNumber},${u.activeStatus ? "Active" : "Inactive"},${u.loggedInToday ? "Yes" : "No"}`
+      csvRow([
+        i + 1,
+        u.identityNumber,
+        u.activeStatus ? "Active" : "Inactive",
+        isToday(u.lastLoginAt) ? "Yes" : "No",
+      ])
     );
     const csv = [header, ...rows].join("\n");
 

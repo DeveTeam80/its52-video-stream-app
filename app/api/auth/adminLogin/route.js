@@ -5,7 +5,7 @@ import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import LoginAttempt from "@/lib/models/loginAttempt";
 import { createJWT } from "@/lib/utils";
-import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH, SESSION_LIFETIME_SECONDS } from "@/lib/constants";
+import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH, ADMIN_SESSION_LIFETIME_SECONDS } from "@/lib/constants";
 import { isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
@@ -99,14 +99,14 @@ export async function POST(request) {
         );
       }
 
-      const adminToken = createJWT(identityNumber, { adminAuth: true, superAdmin: true });
+      const adminToken = createJWT(identityNumber, { adminAuth: true, superAdmin: true }, ADMIN_SESSION_LIFETIME_SECONDS);
 
       // Update or create user record
       const existingUser = await User.findOne({ identityNumber });
       if (existingUser) {
         await User.findOneAndUpdate(
           { identityNumber },
-          { activeStatus: true, token: adminToken, loggedInToday: true }
+          { activeStatus: true, token: adminToken, loggedInToday: true, lastLoginAt: new Date() }
         );
       } else {
         await User.create({
@@ -114,6 +114,7 @@ export async function POST(request) {
           activeStatus: true,
           token: adminToken,
           loggedInToday: true,
+          lastLoginAt: new Date(),
         });
       }
 
@@ -130,7 +131,7 @@ export async function POST(request) {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        maxAge: SESSION_LIFETIME_SECONDS,
+        maxAge: ADMIN_SESSION_LIFETIME_SECONDS,
       });
 
       return response;
@@ -169,12 +170,12 @@ export async function POST(request) {
       );
     }
 
-    const adminToken = createJWT(identityNumber, { adminAuth: true });
+    const adminToken = createJWT(identityNumber, { adminAuth: true }, ADMIN_SESSION_LIFETIME_SECONDS);
 
     // Update admin record
     await Admin.findOneAndUpdate(
       { identityNumber },
-      { activeStatus: true, token: adminToken, loggedInToday: true }
+      { activeStatus: true, token: adminToken, loggedInToday: true, lastLoginAt: new Date() }
     );
 
     // Update or create user record
@@ -182,7 +183,7 @@ export async function POST(request) {
     if (existingUser) {
       await User.findOneAndUpdate(
         { identityNumber },
-        { activeStatus: true, token: adminToken, loggedInToday: true }
+        { activeStatus: true, token: adminToken, loggedInToday: true, lastLoginAt: new Date() }
       );
     } else {
       await User.create({
@@ -190,6 +191,7 @@ export async function POST(request) {
         activeStatus: true,
         token: adminToken,
         loggedInToday: true,
+        lastLoginAt: new Date(),
       });
     }
 
@@ -205,7 +207,7 @@ export async function POST(request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: SESSION_LIFETIME_SECONDS,
+      maxAge: ADMIN_SESSION_LIFETIME_SECONDS,
     });
 
     return response;

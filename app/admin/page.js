@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ToastContainer, { showToast } from "../components/Toast";
 import ConfirmDialogContainer, { confirmAction } from "../components/ConfirmDialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { isToday } from "@/lib/date";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -727,8 +728,8 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td>
-                      <span className={`status-badge ${user.loggedInToday ? "status-active" : "status-inactive"}`}>
-                        {user.loggedInToday ? "Yes" : "No"}
+                      <span className={`status-badge ${isToday(user.lastLoginAt) ? "status-active" : "status-inactive"}`}>
+                        {isToday(user.lastLoginAt) ? "Yes" : "No"}
                       </span>
                     </td>
                     <td className="action-cell">
