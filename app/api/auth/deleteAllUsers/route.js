@@ -4,7 +4,7 @@ import User from "@/lib/models/user";
 import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import RefreshSignal from "@/lib/models/refreshSignal";
-import { verifyToken, verifyAdmin, verifySuperAdmin } from "@/lib/auth";
+import { verifyToken, verifySuperAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/auditLog";
 
 export async function DELETE(request) {
@@ -19,11 +19,13 @@ export async function DELETE(request) {
 
     await dbConnect();
 
-    const isAdmin = await verifyAdmin(user.identityNumber);
+    // Delete-all is super-admin-only — a destructive, irreversible action that
+    // a regular admin should not be able to trigger (e.g. wiping every viewer
+    // mid-event). Single-user delete remains available to admins.
     const isSuperAdmin = verifySuperAdmin(user);
-    if (!isAdmin && !isSuperAdmin) {
+    if (!isSuperAdmin) {
       return NextResponse.json(
-        { message: "Admin access only" },
+        { message: "Super admin access only" },
         { status: 403 }
       );
     }

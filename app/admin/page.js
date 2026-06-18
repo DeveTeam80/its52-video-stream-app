@@ -657,13 +657,15 @@ export default function AdminPage() {
               style={{ display: "none" }}
               onChange={handleImportFile}
             />
-            <input
-              className="btn-login btn btn-danger"
-              type="button"
-              value={loading === "deleteAll" ? "Deleting..." : "Delete All Users"}
-              onClick={deleteAllUsers}
-              disabled={!!loading}
-            />
+            {isSuperAdmin && (
+              <input
+                className="btn-login btn btn-danger"
+                type="button"
+                value={loading === "deleteAll" ? "Deleting..." : "Delete All Users"}
+                onClick={deleteAllUsers}
+                disabled={!!loading}
+              />
+            )}
           </div>
         </div>
 
