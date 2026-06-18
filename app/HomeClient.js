@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import "plyr/dist/plyr.css";
 import ToastContainer, { showToast } from "./components/Toast";
 
+// Build request headers: include the Bearer token only if localStorage still
+// has it; otherwise rely on the durable httpOnly auth-token cookie (sent
+// automatically by the browser). iOS can evict localStorage on a phone call,
+// but the cookie survives — so the viewer stays logged in either way.
+function authHeaders(extra = {}) {
+  const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  return t ? { ...extra, Authorization: `Bearer ${t}` } : { ...extra };
+}
+
 export default function HomeClient() {
   const router = useRouter();
   const bodyRef = useRef(null);
@@ -16,16 +25,12 @@ export default function HomeClient() {
 
   useEffect(() => {
     async function init() {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-
-      // Auth check — redirect to login if not authorized
+      // Don't bail just because localStorage is empty — authCheck also
+      // authenticates via the durable httpOnly cookie (sent automatically).
+      // Let the server decide; only redirect if it says we're not authorized.
       try {
         const authRes = await fetch("/api/auth/authCheck", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(),
         });
         const authData = await authRes.json();
 
@@ -38,7 +43,6 @@ export default function HomeClient() {
         if (authData.admin) setIsAdmin(true);
         if (authData.superAdmin) setIsSuperAdmin(true);
       } catch {
-        localStorage.removeItem("token");
         router.push("/login");
         return;
       }
@@ -51,7 +55,7 @@ export default function HomeClient() {
       // Fetch video
       try {
         const res = await fetch("/api/auth/videoId", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(),
         });
         const data = await res.json();
         if (data.videoId) {
@@ -67,11 +71,9 @@ export default function HomeClient() {
     // Poll for admin-triggered refresh every 5 seconds
     let lastRefresh = null;
     const interval = setInterval(async () => {
-      const t = localStorage.getItem("token");
-      if (!t) return;
       try {
         const res = await fetch("/api/auth/checkRefresh", {
-          headers: { Authorization: `Bearer ${t}` },
+          headers: authHeaders(),
         });
         const data = await res.json();
         if (data.triggeredAt) {
@@ -141,14 +143,10 @@ export default function HomeClient() {
   }, [videoId]);
 
   async function logout() {
-    const token = localStorage.getItem("token");
     try {
       const res = await fetch("/api/auth/logout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders({ "Content-Type": "application/json" }),
       });
       const data = await res.json();
       showToast(data.message || "Logged out successfully", "success");
