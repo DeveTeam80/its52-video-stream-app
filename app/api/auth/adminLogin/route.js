@@ -5,8 +5,8 @@ import Admin from "@/lib/models/admin";
 import SuperAdmin from "@/lib/models/superAdmin";
 import LoginAttempt from "@/lib/models/loginAttempt";
 import { createJWT } from "@/lib/utils";
-import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/constants";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, MAX_PASSWORD_LENGTH, SESSION_LIFETIME_SECONDS } from "@/lib/constants";
+import { isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
   try {
@@ -23,7 +23,8 @@ export async function POST(request) {
     const ipAddress =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
-    const rateLimitResult = await checkRateLimit(`adminLogin:${ipAddress}`);
+    // Only FAILED admin logins are counted (recorded on the failure paths below).
+    const rateLimitResult = await isRateLimited(`adminLogin:${ipAddress}`);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { message: rateLimitResult.message },
@@ -91,6 +92,7 @@ export async function POST(request) {
     if (superAdminRecord) {
       if (password !== superAdminRecord.password) {
         await logLoginAttempt(identityNumber, ipAddress, false, "Invalid super admin password");
+        await recordFailedAttempt(`adminLogin:${ipAddress}`);
         return NextResponse.json(
           { message: "Invalid password." },
           { status: 401 }
@@ -128,7 +130,7 @@ export async function POST(request) {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        maxAge: 365 * 24 * 60 * 60,
+        maxAge: SESSION_LIFETIME_SECONDS,
       });
 
       return response;
@@ -139,6 +141,7 @@ export async function POST(request) {
 
     if (!adminUser) {
       await logLoginAttempt(identityNumber, ipAddress, false, "Not an admin");
+      await recordFailedAttempt(`adminLogin:${ipAddress}`);
       return NextResponse.json(
         {
           message: "Access denied. Please " + contactPersonConstant + ".",
@@ -150,6 +153,7 @@ export async function POST(request) {
     // Verify individual admin password
     if (!adminUser.password) {
       await logLoginAttempt(identityNumber, ipAddress, false, "Admin password not set");
+      await recordFailedAttempt(`adminLogin:${ipAddress}`);
       return NextResponse.json(
         { message: "Password not set. Please contact super admin." },
         { status: 401 }
@@ -158,6 +162,7 @@ export async function POST(request) {
 
     if (password !== adminUser.password) {
       await logLoginAttempt(identityNumber, ipAddress, false, "Invalid admin password");
+      await recordFailedAttempt(`adminLogin:${ipAddress}`);
       return NextResponse.json(
         { message: "Invalid password." },
         { status: 401 }
@@ -200,7 +205,7 @@ export async function POST(request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 365 * 24 * 60 * 60,
+      maxAge: SESSION_LIFETIME_SECONDS,
     });
 
     return response;

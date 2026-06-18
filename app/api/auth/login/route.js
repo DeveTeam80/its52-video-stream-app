@@ -4,8 +4,9 @@ import User from "@/lib/models/user";
 import Admin from "@/lib/models/admin";
 import LoginAttempt from "@/lib/models/loginAttempt";
 import { createJWT } from "@/lib/utils";
-import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH } from "@/lib/constants";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { verifyJWT } from "@/lib/auth";
+import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, SESSION_LIFETIME_SECONDS } from "@/lib/constants";
+import { isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
   try {
@@ -22,8 +23,9 @@ export async function POST(request) {
     const ipAddress =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
-    // Rate limiting
-    const rateLimitResult = await checkRateLimit(`login:${ipAddress}`);
+    // Rate limiting — only FAILED logins are counted (recorded below), so a
+    // venue full of legitimate users sharing one IP is never locked out.
+    const rateLimitResult = await isRateLimited(`login:${ipAddress}`);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { message: rateLimitResult.message },
@@ -81,7 +83,7 @@ export async function POST(request) {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        maxAge: 365 * 24 * 60 * 60,
+        maxAge: SESSION_LIFETIME_SECONDS,
       });
 
       return response;
@@ -89,6 +91,7 @@ export async function POST(request) {
 
     if (!existingUser) {
       await logLoginAttempt(identityNumber, ipAddress, false, "User not in database");
+      await recordFailedAttempt(`login:${ipAddress}`);
       return NextResponse.json(
         {
           message:
@@ -98,7 +101,11 @@ export async function POST(request) {
       );
     }
 
-    if (existingUser.activeStatus) {
+    // Block a second login ONLY while the existing session's token is still
+    // valid (someone is actively using it) — this is the anti-prank guard. If
+    // the stored token has expired (its 23h is up), the previous session is
+    // dead, so we let the user log in again instead of locking them out.
+    if (existingUser.activeStatus && existingUser.token && verifyJWT(existingUser.token)) {
       await logLoginAttempt(identityNumber, ipAddress, false, "User already active");
       return NextResponse.json(
         {
@@ -131,7 +138,7 @@ export async function POST(request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 365 * 24 * 60 * 60,
+      maxAge: SESSION_LIFETIME_SECONDS,
     });
 
     return response;
