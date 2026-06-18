@@ -110,11 +110,11 @@ export default function HomeClient() {
         clickToPlay: false,
         fullscreen: { enabled: true, fallback: true, iosNative: false },
         playsinline: true,
-        autoplay: true,
-        // Browsers block autoplay WITH sound; starting muted makes autoplay
-        // fire reliably (incl. iPhone). The user taps unmute for audio.
-        muted: true,
-        youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1, mute: 1 },
+        // No autoplay: the viewer taps the big play button to start. A tap is a
+        // "user gesture", so the stream starts WITH sound — autoplay-WITH-sound
+        // is blocked by browsers, but tap-to-play is always allowed.
+        autoplay: false,
+        youtube: { noCookie: true, rel: 0, modestbranding: 1, playsinline: 1 },
       });
 
       // Hide the contact message while the player is fullscreen. On iPhone,
