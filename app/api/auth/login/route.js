@@ -5,9 +5,10 @@ import Admin from "@/lib/models/admin";
 import LoginAttempt from "@/lib/models/loginAttempt";
 import { createJWT } from "@/lib/utils";
 import { verifyJWT } from "@/lib/auth";
-import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, SESSION_LIFETIME_SECONDS } from "@/lib/constants";
+import { identityNumberConstant, contactPersonConstant, MAX_IDENTITY_NUMBER_LENGTH, SESSION_LIFETIME_SECONDS, DEVICE_ID_COOKIE_MAX_AGE } from "@/lib/constants";
 import { isRateLimited, recordFailedAttempt } from "@/lib/rateLimit";
 import { cleanRequired } from "@/lib/validate";
+import { randomUUID } from "crypto";
 
 async function logLoginAttempt(identityNumber, ipAddress, success, reason) {
   try {
@@ -23,6 +24,10 @@ export async function POST(request) {
 
     const ipAddress =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
+    // The browser's persistent device-id (set on a prior login). Lets the same
+    // device reclaim its session without tripping the single-session lock.
+    const incomingDeviceId = request.cookies.get("device-id")?.value || null;
 
     // Rate limiting — only FAILED logins are counted (recorded below), so a
     // venue full of legitimate users sharing one IP is never locked out.
@@ -103,11 +108,20 @@ export async function POST(request) {
       );
     }
 
-    // Block a second login ONLY while the existing session's token is still
-    // valid (someone is actively using it) — this is the anti-prank guard. If
-    // the stored token has expired (its 23h is up), the previous session is
-    // dead, so we let the user log in again instead of locking them out.
-    if (existingUser.activeStatus && existingUser.token && verifyJWT(existingUser.token)) {
+    // Same device coming back? A matching device-id cookie means this is the
+    // same browser reclaiming its own session, so we never block it — this is
+    // what fixes the false lockout when a user flips WiFi <-> mobile data.
+    const sameDevice = !!(
+      incomingDeviceId &&
+      existingUser.deviceId &&
+      incomingDeviceId === existingUser.deviceId
+    );
+
+    // Block a second login ONLY from a DIFFERENT device while the existing
+    // session's token is still valid (someone is actively using it) — this is
+    // the anti-prank guard. Once that token expires (5h), the previous session
+    // is dead, so we let the user log in again instead of locking them out.
+    if (!sameDevice && existingUser.activeStatus && existingUser.token && verifyJWT(existingUser.token)) {
       await logLoginAttempt(identityNumber, ipAddress, false, "User already active");
       return NextResponse.json(
         {
@@ -121,10 +135,12 @@ export async function POST(request) {
     }
 
     const newToken = createJWT(identityNumber);
+    // Reuse the browser's existing device-id if it presented one, else mint a new one.
+    const deviceId = incomingDeviceId || randomUUID();
 
     await User.findOneAndUpdate(
       { identityNumber },
-      { activeStatus: true, token: newToken, loggedInToday: true, lastLoginAt: new Date() }
+      { activeStatus: true, token: newToken, loggedInToday: true, lastLoginAt: new Date(), deviceId }
     );
 
     await logLoginAttempt(identityNumber, ipAddress, true, "Login successful");
@@ -141,6 +157,16 @@ export async function POST(request) {
       sameSite: "lax",
       path: "/",
       maxAge: SESSION_LIFETIME_SECONDS,
+    });
+
+    // Long-lived device-id cookie so this browser is recognised on its next
+    // login and can silently reclaim its session (refreshed on each login).
+    response.cookies.set("device-id", deviceId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: DEVICE_ID_COOKIE_MAX_AGE,
     });
 
     return response;
